@@ -14,43 +14,28 @@ body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
-def run_copilot(symbol, price, support, resistance, rsi):
-    st.subheader("🤖 שאל את CoPilot")
-    question = st.text_input("מה אתה רוצה לדעת על המניה?", key="copilot_q")
-
-    if question:
-        with st.spinner("CoPilot מנתח את הנתונים..."):
-            if "לקנות" in question:
-                if rsi < 30:
-                    st.success("CoPilot: RSI נמוך – ייתכן שזה זמן טוב לשקול קנייה.")
-                else:
-                    st.info("CoPilot: לא בטוח שזה הזמן הנכון לקנות. בדוק את RSI והתמיכה.")
-            elif "למכור" in question:
-                if rsi > 70:
-                    st.warning("CoPilot: RSI גבוה מאוד – ייתכן שהמניה במצב קנייה יתר.")
-                else:
-                    st.info("CoPilot: לא רואים אינדיקציה חזקה למכירה כרגע.")
-            elif "סיכון" in question:
-                if price < support:
-                    st.warning("CoPilot: המניה מתחת לתמיכה – רמת סיכון גבוהה.")
-                elif price > resistance:
-                    st.success("CoPilot: פרצה התנגדות – מומנטום חיובי אך גם סיכון.")
-                else:
-                    st.info("CoPilot: נמצאת בטווח רגיל – סיכון ממוצע.")
-            else:
-                st.info("CoPilot: שאל אותי על קנייה, מכירה או סיכון כדי לקבל מענה מותאם.")
-
 symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
+period_option = st.selectbox("בחר טווח זמן לניתוח:", ["1 שבוע", "1 חודש", "3 חודשים", "1 שנה", "5 שנים"], index=2)
+
+period_map = {
+    "1 שבוע": "7d",
+    "1 חודש": "1mo",
+    "3 חודשים": "3mo",
+    "1 שנה": "1y",
+    "5 שנים": "5y"
+}
 
 if st.button("נתח עכשיו"):
     stock = yf.Ticker(symbol)
-    hist = stock.history(period="3mo")
+    hist = stock.history(period=period_map[period_option])
 
     if hist.empty:
         st.error("לא נמצאו נתונים עבור הסמל הזה.")
     else:
         hist = hist.dropna()
         rsi_series = ta.momentum.RSIIndicator(close=hist['Close']).rsi()
+        ema_50 = ta.trend.EMAIndicator(close=hist['Close'], window=50).ema_indicator()
+        ema_200 = ta.trend.EMAIndicator(close=hist['Close'], window=200).ema_indicator()
 
         last_price = hist['Close'][-1]
         support = hist['Close'].min()
@@ -59,6 +44,7 @@ if st.button("נתח עכשיו"):
         rsi_now = rsi_series.iloc[-1]
 
         st.subheader("📌 ניתוח טכני")
+        st.write(f"**טווח ניתוח:** {period_option}")
         st.write(f"**מחיר נוכחי:** {last_price:.2f} $")
         st.write(f"**רמת תמיכה:** {support:.2f} $")
         st.write(f"**רמת התנגדות:** {resistance:.2f} $")
@@ -76,17 +62,32 @@ if st.button("נתח עכשיו"):
         else:
             st.warning("⚠️ המלצה כללית: המתן לפריצה – המניה קרובה להתנגדות.")
 
-        st.subheader("🤖 Copilot – עוזר חכם")
-        run_copilot(symbol, last_price, support, resistance, rsi_now)
-
+        st.subheader("📊 גרף טכני – נרות, RSI ו-EMA")
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], mode='lines', name='מחיר'))
-        fig.add_trace(go.Scatter(x=rsi_series.index, y=rsi_series, mode='lines', name='RSI', yaxis='y2'))
+
+        # נרות יפניים
+        fig.add_trace(go.Candlestick(
+            x=hist.index,
+            open=hist['Open'],
+            high=hist['High'],
+            low=hist['Low'],
+            close=hist['Close'],
+            name='נרות'
+        ))
+
+        # EMA
+        fig.add_trace(go.Scatter(x=hist.index, y=ema_50, mode='lines', name='EMA 50'))
+        fig.add_trace(go.Scatter(x=hist.index, y=ema_200, mode='lines', name='EMA 200'))
+
+        # קווי תמיכה והתנגדות
         fig.add_hline(y=support, line=dict(color='green', dash='dot'))
         fig.add_hline(y=resistance, line=dict(color='red', dash='dot'))
+
         fig.update_layout(
-            yaxis=dict(title='מחיר'),
-            yaxis2=dict(title='RSI', overlaying='y', side='right', showgrid=False),
-            title=f"גרף מחיר + RSI עבור {symbol}"
+            title=f"ניתוח טכני למניית {symbol} – כולל EMA ונרות",
+            yaxis_title='מחיר',
+            xaxis_title='תאריך',
+            xaxis_rangeslider_visible=False
         )
+
         st.plotly_chart(fig, use_container_width=True)
