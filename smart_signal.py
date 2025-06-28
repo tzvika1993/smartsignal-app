@@ -15,9 +15,8 @@ body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
-symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
-
-openai.api_key = "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"
+# התחברות מאובטחת ל־OpenAI (מ־secrets של Streamlit)
+client = openai.OpenAI(api_key=st.secrets["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"])
 
 def get_gpt_analysis(symbol, price, support, resistance, rsi):
     prompt = f"""
@@ -30,11 +29,14 @@ def get_gpt_analysis(symbol, price, support, resistance, rsi):
 
     תן חוות דעת טכנית תמציתית והמלצה (קנייה/המתן/מכירה), בטון מקצועי וברור.
     """
-    response = openai.ChatCompletion.create(
+
+    response = client.chat.completions.create(
         model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
     )
     return response.choices[0].message.content
+
+symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
 
 if st.button("נתח עכשיו"):
     stock = yf.Ticker(symbol)
@@ -73,8 +75,11 @@ if st.button("נתח עכשיו"):
         # חוות דעת GPT
         st.subheader("🧠 חוות דעת GPT")
         with st.spinner("GPT מנתח את המצב..."):
-            gpt_result = get_gpt_analysis(symbol, last_price, support, resistance, rsi_now)
-            st.success(gpt_result)
+            try:
+                gpt_result = get_gpt_analysis(symbol, last_price, support, resistance, rsi_now)
+                st.success(gpt_result)
+            except Exception as e:
+                st.error(f"שגיאה בעת קבלת תחזית GPT: {e}")
 
         # גרף
         fig = go.Figure()
