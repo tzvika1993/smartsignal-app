@@ -2,7 +2,6 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objs as go
 import ta
-import requests
 
 st.set_page_config(layout="wide")
 st.title("📈 SmartSignal – ניתוח חכם למניה")
@@ -15,24 +14,31 @@ body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
-def get_ai_analysis(symbol, price, support, resistance, rsi):
-    prompt = f"""
-    אתה יועץ השקעות. נתח את מניית {symbol} בהתבסס על:
-    - מחיר נוכחי: {price:.2f} דולר
-    - רמת תמיכה: {support:.2f} דולר
-    - רמת התנגדות: {resistance:.2f} דולר
-    - מדד RSI: {rsi:.2f}
-    תן תחזית טכנית קצרה בעברית כולל המלצה (קנייה / המתן / מכירה).
-    """
-    response = requests.post(
-        "https://api-inference.huggingface.co/models/bigscience/bloomz-560m",
-        headers={"Authorization": f"Bearer {st.secrets['hf_token']}"},
-        json={"inputs": prompt}
-    )
-    if response.status_code == 200:
-        return response.json()[0]['generated_text']
-    else:
-        return f"❌ שגיאה מהבינה: {response.status_code} - {response.text}"
+def run_copilot(symbol, price, support, resistance, rsi):
+    st.subheader("🤖 שאל את CoPilot")
+    question = st.text_input("מה אתה רוצה לדעת על המניה?", key="copilot_q")
+
+    if question:
+        with st.spinner("CoPilot מנתח את הנתונים..."):
+            if "לקנות" in question:
+                if rsi < 30:
+                    st.success("CoPilot: RSI נמוך – ייתכן שזה זמן טוב לשקול קנייה.")
+                else:
+                    st.info("CoPilot: לא בטוח שזה הזמן הנכון לקנות. בדוק את RSI והתמיכה.")
+            elif "למכור" in question:
+                if rsi > 70:
+                    st.warning("CoPilot: RSI גבוה מאוד – ייתכן שהמניה במצב קנייה יתר.")
+                else:
+                    st.info("CoPilot: לא רואים אינדיקציה חזקה למכירה כרגע.")
+            elif "סיכון" in question:
+                if price < support:
+                    st.warning("CoPilot: המניה מתחת לתמיכה – רמת סיכון גבוהה.")
+                elif price > resistance:
+                    st.success("CoPilot: פרצה התנגדות – מומנטום חיובי אך גם סיכון.")
+                else:
+                    st.info("CoPilot: נמצאת בטווח רגיל – סיכון ממוצע.")
+            else:
+                st.info("CoPilot: שאל אותי על קנייה, מכירה או סיכון כדי לקבל מענה מותאם.")
 
 symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
 
@@ -70,10 +76,8 @@ if st.button("נתח עכשיו"):
         else:
             st.warning("⚠️ המלצה כללית: המתן לפריצה – המניה קרובה להתנגדות.")
 
-        st.subheader("🤖 חוות דעת בינה מלאכותית חינמית")
-        with st.spinner("הבינה מנתחת את המצב..."):
-            gpt_result = get_ai_analysis(symbol, last_price, support, resistance, rsi_now)
-            st.info(gpt_result)
+        st.subheader("🤖 Copilot – עוזר חכם")
+        run_copilot(symbol, last_price, support, resistance, rsi_now)
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], mode='lines', name='מחיר'))
