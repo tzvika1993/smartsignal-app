@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objs as go
 import ta
-import openai>=1.3.7
+import openai
 
 st.set_page_config(layout="wide")
 st.title("📈 SmartSignal – ניתוח חכם למניה")
