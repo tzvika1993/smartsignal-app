@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objs as go
 import ta
+import openai
 
 st.set_page_config(layout="wide")
 st.title("📈 SmartSignal – ניתוח חכם למניה")
@@ -16,6 +17,25 @@ body, .stApp {
 
 symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
 
+openai.api_key = st.secrets["openai_api_key"]
+
+def get_gpt_analysis(symbol, price, support, resistance, rsi):
+    prompt = f"""
+    אתה אנליסט מומחה לשוק ההון.
+    נתח את מניית {symbol} בהתבסס על הנתונים הבאים:
+    - מחיר נוכחי: {price:.2f}$
+    - רמת תמיכה: {support:.2f}$
+    - רמת התנגדות: {resistance:.2f}$
+    - RSI נוכחי: {rsi:.2f}
+
+    תן חוות דעת טכנית תמציתית והמלצה (קנייה/המתן/מכירה), בטון מקצועי וברור.
+    """
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
+
 if st.button("נתח עכשיו"):
     stock = yf.Ticker(symbol)
     hist = stock.history(period="3mo")
@@ -24,22 +44,23 @@ if st.button("נתח עכשיו"):
         st.error("לא נמצאו נתונים עבור הסמל הזה.")
     else:
         hist = hist.dropna()
-        rsi = ta.momentum.RSIIndicator(close=hist['Close']).rsi()
+        rsi_series = ta.momentum.RSIIndicator(close=hist['Close']).rsi()
 
         last_price = hist['Close'][-1]
         support = hist['Close'].min()
         resistance = hist['Close'].max()
         range_mid = (support + resistance) / 2
+        rsi_now = rsi_series.iloc[-1]
 
         st.subheader("📌 ניתוח טכני")
         st.write(f"**מחיר נוכחי:** {last_price:.2f} $")
         st.write(f"**רמת תמיכה:** {support:.2f} $")
         st.write(f"**רמת התנגדות:** {resistance:.2f} $")
-        st.write(f"**RSI נוכחי:** {rsi.iloc[-1]:.2f}")
+        st.write(f"**RSI נוכחי:** {rsi_now:.2f}")
 
-        if rsi.iloc[-1] > 70:
+        if rsi_now > 70:
             st.warning("⚠️ המניה במצב קנייה יתר – יתכן תיקון בקרוב.")
-        elif rsi.iloc[-1] < 30:
+        elif rsi_now < 30:
             st.success("✅ המניה במצב מכירת יתר – עשויה לעלות.")
         else:
             st.info("ℹ️ RSI נייטרלי – עקוב אחרי התנועה הבאה.")
@@ -49,9 +70,16 @@ if st.button("נתח עכשיו"):
         else:
             st.warning("⚠️ המלצה כללית: המתן לפריצה – המניה קרובה להתנגדות.")
 
+        # חוות דעת GPT
+        st.subheader("🧠 חוות דעת GPT")
+        with st.spinner("GPT מנתח את המצב..."):
+            gpt_result = get_gpt_analysis(symbol, last_price, support, resistance, rsi_now)
+            st.success(gpt_result)
+
+        # גרף
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], mode='lines', name='מחיר'))
-        fig.add_trace(go.Scatter(x=rsi.index, y=rsi, mode='lines', name='RSI', yaxis='y2'))
+        fig.add_trace(go.Scatter(x=rsi_series.index, y=rsi_series, mode='lines', name='RSI', yaxis='y2'))
         fig.add_hline(y=support, line=dict(color='green', dash='dot'))
         fig.add_hline(y=resistance, line=dict(color='red', dash='dot'))
         fig.update_layout(
