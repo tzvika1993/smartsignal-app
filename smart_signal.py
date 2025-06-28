@@ -2,7 +2,6 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objs as go
 import ta
-import openai
 
 st.set_page_config(layout="wide")
 st.title("📈 SmartSignal – ניתוח חכם למניה")
@@ -15,28 +14,30 @@ body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
-# התחברות ל־OpenAI דרך לקוח חדש
-client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
+def get_fake_analysis(symbol, price, support, resistance, rsi):
+    if rsi > 70:
+        sentiment = "המניה במצב קנייה יתר. עלולה לתקן כלפי מטה."
+        recommendation = "המתן להתייצבות לפני קנייה."
+    elif rsi < 30:
+        sentiment = "המניה במצב מכירת יתר. יתכן פוטנציאל לעלייה."
+        recommendation = "שקול קנייה זהירה."
+    else:
+        sentiment = "RSI נייטרלי. אין איתות מובהק."
+        recommendation = "מעקב בלבד בשלב זה."
 
-def get_gpt_analysis(symbol, price, support, resistance, rsi):
-    prompt = f"""
-    אתה אנליסט מומחה לשוק ההון.
-    נתח את מניית {symbol} בהתבסס על הנתונים הבאים:
-    - מחיר נוכחי: {price:.2f}$
-    - רמת תמיכה: {support:.2f}$
-    - רמת התנגדות: {resistance:.2f}$
-    - RSI נוכחי: {rsi:.2f}
+    if price < support:
+        trend = "נמצאת מתחת לרמת התמיכה – סכנת ירידה נוספת."
+    elif price > resistance:
+        trend = "פרצה את רמת ההתנגדות – מומנטום חיובי."
+    else:
+        trend = "נעה בין התמיכה להתנגדות – תעלה או תרד בהתאם לשוק."
 
-    תן חוות דעת טכנית תמציתית והמלצה (קנייה/המתן/מכירה), בטון מקצועי וברור.
-    """
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"⚠️ שגיאה: {e}"
+    return f"""
+### ניתוח חכם מדומה (ללא GPT)
+- {sentiment}
+- {trend}
+- המלצה: **{recommendation}**
+"""
 
 symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
 
@@ -74,9 +75,9 @@ if st.button("נתח עכשיו"):
         else:
             st.warning("⚠️ המלצה כללית: המתן לפריצה – המניה קרובה להתנגדות.")
 
-        st.subheader("🧠 חוות דעת GPT")
-        with st.spinner("GPT מנתח את המצב..."):
-            gpt_result = get_gpt_analysis(symbol, last_price, support, resistance, rsi_now)
+        st.subheader("🧠 תחזית חכמה (ללא GPT)")
+        with st.spinner("מנתח את המצב..."):
+            gpt_result = get_fake_analysis(symbol, last_price, support, resistance, rsi_now)
             st.info(gpt_result)
 
         fig = go.Figure()
