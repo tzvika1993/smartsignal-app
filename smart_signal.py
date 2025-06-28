@@ -17,7 +17,7 @@ body, .stApp {
 
 symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
 
-openai.api_key = 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
+openai.api_key = "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"
 
 def get_gpt_analysis(symbol, price, support, resistance, rsi):
     prompt = f"""
