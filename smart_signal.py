@@ -16,7 +16,7 @@ body, .stApp {
 """, unsafe_allow_html=True)
 
 # התחברות מאובטחת ל־OpenAI (מ־secrets של Streamlit)
-client = openai.OpenAI(api_key=st.secrets "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")
+client = openai.OpenAI(api_key= "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")
 
 def get_gpt_analysis(symbol, price, support, resistance, rsi):
     prompt = f"""
