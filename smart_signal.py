@@ -15,7 +15,7 @@ body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
-# התחברות מאובטחת ל־OpenAI (מ־secrets של Streamlit)
+# התחברות ל־OpenAI דרך לקוח חדש
 client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
 
 def get_gpt_analysis(symbol, price, support, resistance, rsi):
@@ -29,12 +29,14 @@ def get_gpt_analysis(symbol, price, support, resistance, rsi):
 
     תן חוות דעת טכנית תמציתית והמלצה (קנייה/המתן/מכירה), בטון מקצועי וברור.
     """
-
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"⚠️ שגיאה: {e}"
 
 symbol = st.text_input("🔍 הזן סמל מניה (למשל MSFT):", "MSFT")
 
@@ -72,16 +74,11 @@ if st.button("נתח עכשיו"):
         else:
             st.warning("⚠️ המלצה כללית: המתן לפריצה – המניה קרובה להתנגדות.")
 
-        # חוות דעת GPT
         st.subheader("🧠 חוות דעת GPT")
         with st.spinner("GPT מנתח את המצב..."):
-            try:
-                gpt_result = get_gpt_analysis(symbol, last_price, support, resistance, rsi_now)
-                st.success(gpt_result)
-            except Exception as e:
-                st.error(f"שגיאה בעת קבלת תחזית GPT: {e}")
+            gpt_result = get_gpt_analysis(symbol, last_price, support, resistance, rsi_now)
+            st.info(gpt_result)
 
-        # גרף
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], mode='lines', name='מחיר'))
         fig.add_trace(go.Scatter(x=rsi_series.index, y=rsi_series, mode='lines', name='RSI', yaxis='y2'))
