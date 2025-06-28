@@ -91,3 +91,16 @@ if st.button("נתח עכשיו"):
             title=f"גרף מחיר + RSI עבור {symbol}"
         )
         st.plotly_chart(fig, use_container_width=True)
+
+        # Copilot אינטראקטיבי
+        with st.expander("🤖 Copilot – שאל שאלה על המניה"):
+            user_q = st.text_input("מה אתה רוצה לדעת על המניה?", key="copilot_q")
+            if st.button("🔍 שאל את Copilot"):
+                if "למכור" in user_q or "לא כדאי" in user_q:
+                    st.warning("Copilot: אם המניה קרובה להתנגדות וה־RSI גבוה – ייתכן שכדאי לשקול המתנה או מכירה.")
+                elif "לקנות" in user_q or "לעלות" in user_q:
+                    st.success("Copilot: אם RSI נמוך והמניה קרובה לתמיכה – זו עשויה להיות הזדמנות קנייה.")
+                elif "סיכון" in user_q:
+                    st.info("Copilot: הסיכון גבוה כאשר המניה פרצה רמות תמיכה או כשה־RSI קיצוני.")
+                else:
+                    st.info("Copilot: אני כאן לעזור! נסה לשאול על קנייה, מכירה, תחזית או סיכון.")
