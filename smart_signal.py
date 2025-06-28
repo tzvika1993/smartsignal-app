@@ -17,20 +17,18 @@ body, .stApp {
 
 def get_ai_analysis(symbol, price, support, resistance, rsi):
     prompt = f"""
-    Analyze stock {symbol}:
-    - Current price: {price:.2f}$
-    - Support: {support:.2f}$
-    - Resistance: {resistance:.2f}$
-    - RSI: {rsi:.2f}
-    Provide a brief technical recommendation (Buy / Hold / Sell).
+    אתה יועץ השקעות. נתח את מניית {symbol} בהתבסס על:
+    - מחיר נוכחי: {price:.2f} דולר
+    - רמת תמיכה: {support:.2f} דולר
+    - רמת התנגדות: {resistance:.2f} דולר
+    - מדד RSI: {rsi:.2f}
+    תן תחזית טכנית קצרה בעברית כולל המלצה (קנייה / המתן / מכירה).
     """
-
     response = requests.post(
-        "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct",
+        "https://api-inference.huggingface.co/models/bigscience/bloomz-560m",
         headers={"Authorization": f"Bearer {st.secrets['hf_token']}"},
         json={"inputs": prompt}
     )
-
     if response.status_code == 200:
         return response.json()[0]['generated_text']
     else:
